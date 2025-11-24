@@ -1,0 +1,36 @@
+[data-glide] {
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+}
+
+[data-glide-track] {
+  display: flex;
+  gap: calc(var(--carousel-gap) * 1rem);
+
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+
+  touch-action: pan-y;
+  user-select: none;
+  cursor: grab;
+}
+
+[data-glide-track]:active {
+  cursor: grabbing;
+}
+
+[data-glide-slide] {
+  flex-shrink: 0;
+  width: calc(
+    (100% - (var(--slides-to-show) - 1) * var(--carousel-gap) * 1rem) /
+      var(--slides-to-show)
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-glide-track] {
+    transition: none;
+    scroll-behavior: auto;
+  }
+}
