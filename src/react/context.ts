@@ -25,3 +25,6 @@ export interface SlideContextValue {
 
 /** Set per slide by `<Slider.Viewport>`; `null` means the slide is outside a viewport. */
 export const SlideContext = createContext<SlideContextValue | null>(null)
+
+/** Set per thumbnail by `<Slider.Thumbs>`: the main slider snap a `<Slider.Thumb>` stands for. */
+export const ThumbContext = createContext<number | null>(null)

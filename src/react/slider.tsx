@@ -3,6 +3,7 @@ import {
   isValidElement,
   use,
   useCallback,
+  useEffect,
   useId,
   useMemo,
   type ComponentProps,
@@ -11,7 +12,8 @@ import {
   type Ref,
   type RefCallback,
 } from 'react'
-import { SlideContext, SliderContext, useSliderContext } from './context'
+import { syncSliders, type Axis } from '../core'
+import { SlideContext, SliderContext, ThumbContext, useSliderContext } from './context'
 import { useSlider, type UseSliderOptions } from './use-slider'
 
 type CSSVariables = CSSProperties & Record<`--${string}`, string | number | undefined>
@@ -38,6 +40,8 @@ function SliderRoot({
   defaultIndex,
   index,
   onIndexChange,
+  autoplay,
+  slideProgress,
   perView = 1,
   gap,
   label,
@@ -57,6 +61,8 @@ function SliderRoot({
     defaultIndex,
     index,
     onIndexChange,
+    autoplay,
+    slideProgress,
   })
   const viewportId = useId()
   const resolvedAxis = axis ?? 'x'
@@ -216,12 +222,116 @@ function SliderDots(props: Omit<ComponentProps<'div'>, 'children'>) {
   )
 }
 
+export type SliderAutoplayToggleProps = Omit<ComponentProps<'button'>, 'children'> & {
+  /** The button's content, or a function of the playing state. Default `'Pause'` / `'Play'`. */
+  children?: ReactNode | ((isPlaying: boolean) => ReactNode)
+}
+
+/** Stops and restarts autoplay. Renders nothing when the slider has no `autoplay`. */
+function SliderAutoplayToggle({ onClick, children, ...props }: SliderAutoplayToggleProps) {
+  const { autoplay, viewportId } = useSliderContext()
+  if (autoplay === null) return null
+  const { isPlaying, play, stop } = autoplay
+  return (
+    <button
+      type="button"
+      aria-controls={viewportId}
+      aria-label={isPlaying ? 'Stop automatic slide show' : 'Start automatic slide show'}
+      data-playing={isPlaying ? '' : undefined}
+      {...props}
+      onClick={(event) => {
+        onClick?.(event)
+        if (event.defaultPrevented) return
+        if (isPlaying) stop()
+        else play()
+      }}
+    >
+      {typeof children === 'function'
+        ? children(isPlaying)
+        : (children ?? (isPlaying ? 'Pause' : 'Play'))}
+    </button>
+  )
+}
+
+export type SliderThumbsProps = Omit<ComponentProps<'div'>, 'children'> & {
+  /** Thumbnails per view; `'auto'` sizes them by content. Default `'auto'`. */
+  perView?: number | 'auto'
+  /** Space between thumbnails. A number is in pixels. */
+  gap?: number | string
+  /** Default `'x'`. */
+  axis?: Axis
+  /** `<Slider.Thumb>` elements, one per main slide. */
+  children: ReactNode
+}
+
+/**
+ * A strip of thumbnails that is a slider of its own, kept on the enclosing slider's index:
+ * clicking thumbnail `i` moves the slider to snap `i`, and the matching thumbnail carries
+ * `aria-current="true"` and `data-selected`. Assumes the main slider shows one slide per snap.
+ */
+function SliderThumbs({
+  perView = 'auto',
+  gap,
+  axis = 'x',
+  style,
+  children,
+  ...props
+}: SliderThumbsProps) {
+  const main = useSliderContext()
+  const thumbs = useSlider({ axis, align: 'start', draggable: true })
+
+  useEffect(() => {
+    if (main.slider === null || thumbs.slider === null) return
+    return syncSliders(main.slider, thumbs.slider)
+  }, [main.slider, thumbs.slider])
+
+  // `initial` rather than unset, so the main slider's values are not inherited.
+  const variables: CSSVariables = {
+    '--slider-per-view': perView === 'auto' ? 'initial' : perView,
+    '--slider-gap': gap === undefined ? 'initial' : typeof gap === 'number' ? `${gap}px` : gap,
+    '--slider-align': 'start',
+    ...style,
+  }
+
+  return (
+    <div data-slider-thumbs="" style={variables} {...props}>
+      <div ref={thumbs.viewportRef} data-slider-viewport="" data-axis={axis}>
+        {Children.toArray(children).map((child, i) => (
+          <ThumbContext value={i} key={keyOf(child, i)}>
+            {child}
+          </ThumbContext>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** One thumbnail button. Must be rendered inside `<Slider.Thumbs>`. */
+function SliderThumb(props: ComponentProps<'button'>) {
+  const { viewportId } = useSliderContext()
+  const index = use(ThumbContext)
+  if (index === null) throw new Error('<Slider.Thumb> must be rendered inside <Slider.Thumbs>')
+  // Selection attributes and the click that navigates belong to `syncSliders`.
+  return (
+    <button
+      type="button"
+      data-slider-thumb=""
+      aria-controls={viewportId}
+      aria-label={`Go to slide ${index + 1}`}
+      {...props}
+    />
+  )
+}
+
 export const Slider = Object.assign(SliderRoot, {
   Viewport: SliderViewport,
   Slide: SliderSlide,
   Prev: SliderPrev,
   Next: SliderNext,
   Dots: SliderDots,
+  AutoplayToggle: SliderAutoplayToggle,
+  Thumbs: SliderThumbs,
+  Thumb: SliderThumb,
 })
 
 /** The key `Children.toArray` gave an element, or its position for text children. */
