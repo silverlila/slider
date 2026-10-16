@@ -1,3 +1,4 @@
+export { renderClones } from './clones'
 export { createSlider } from './slider'
 export type {
   Align,

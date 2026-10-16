@@ -7,12 +7,38 @@ import {
   type ScrollHandle,
   type ScrollState,
 } from 'use-scroller/core'
-import { anchors, groupSize, nearestSnap, progressOf, readLayout, snapPositions } from './geometry'
+import {
+  anchors,
+  canonical,
+  copiesNeeded,
+  groupSize,
+  loopProgress,
+  loopSnapPositions,
+  mod,
+  nearestCongruent,
+  nearestSnap,
+  periodOf,
+  positionOf,
+  progressOf,
+  readLayout,
+  snapPositions,
+  virtualAt,
+  type Layout,
+  type Loop,
+} from './geometry'
 import type { NavigateOptions, Slider, SliderOptions, SliderState } from './types'
 
 type ResolvedOptions = Slider['options']
 
+/** A navigation in flight: its target snap and, in a loop, the target's virtual index. */
+interface Pending {
+  index: number
+  virtual: number
+}
+
 const DEFAULT_ANIMATION: ScrollAnimation = { type: 'tween' }
+// How far from a snap the position may be and still count as resting on it.
+const SNAP_TOLERANCE = 1
 
 const STATE_KEYS = [
   'index',
@@ -32,9 +58,12 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
 
   let layout = readLayout(viewport, axis)
   let snaps: number[] = []
+  let loopCopies = 0
+  // The loop geometry while the loop is active (clones rendered); null otherwise.
+  let loop: Loop | null = null
   const tracked = new Set<HTMLElement>()
   const listeners = new Set<(state: SliderState) => void>()
-  let pendingIndex: number | null = null
+  let pending: Pending | null = null
   let current: ScrollHandle | null = null
   // The viewport's own inline scroll-snap-type while the engine holds snapping off; null otherwise.
   let heldSnapType: string | null = null
@@ -58,6 +87,7 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
   }
   const onPointerUp = () => {
     pointerDown = false
+    recentre()
   }
   viewport.addEventListener('pointerdown', onPointerDown)
   window.addEventListener('pointerup', onPointerUp)
@@ -66,11 +96,24 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
   function applyLayout(): void {
     const size = groupSize(layout, resolved.slidesPerMove)
     const anchorIndexes = anchors(layout.slides.length, size, align)
-    snaps = snapPositions(layout, anchorIndexes, align)
+    loopCopies = resolved.loop ? copiesNeeded(layout) : 0
+    loop = isLoopActive(layout, loopCopies)
+      ? {
+          snaps: loopSnapPositions(layout, anchorIndexes, align),
+          period: periodOf(layout),
+          direction: layout.direction,
+        }
+      : null
+    snaps = loop ? loop.snaps : snapPositions(layout, anchorIndexes, align)
     const anchorSet = new Set(anchorIndexes)
     layout.slides.forEach((slide, i) => {
       slide.style.scrollSnapAlign = anchorSet.has(i) ? align : 'none'
     })
+    // Clones snap like the slide they copy, so native snapping continues through them.
+    for (const clone of layout.clones) {
+      const source = Number(clone.getAttribute('data-slider-clone'))
+      clone.style.scrollSnapAlign = loop && anchorSet.has(source) ? align : 'none'
+    }
     trackSlides(layout.slides)
   }
 
@@ -93,27 +136,54 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
     if (destroyed) return
     layout = readLayout(viewport, axis)
     applyLayout()
-    if (pendingIndex === null && !pointerDown && !scrolling) jumpToSnap(state.index)
+    if (pending === null && !pointerDown && !scrolling) jumpToSnap(state.index)
     update(livePosition())
   }
 
   function onScroll(scroll: ScrollState): void {
     scrolling = scroll.isScrolling
     update(axis === 'x' ? scroll.x : scroll.y)
+    recentre()
+  }
+
+  /**
+   * At rest on a snap inside a clone region, jump by whole periods to the same snap in the real
+   * set. Moving the position at any other time would stop native momentum or fight a navigation.
+   */
+  function recentre(): void {
+    if (loop === null || scrolling || pointerDown || pending !== null) return
+    const position = livePosition()
+    const onSnap = Math.abs(positionOf(loop, virtualAt(loop, position)) - position)
+    if (onSnap > SNAP_TOLERANCE) return
+    const target = canonical(loop, position)
+    if (Math.abs(target - position) > SNAP_TOLERANCE) jumpTo(target)
   }
 
   function computeState(position: number): SliderState {
-    const index = pendingIndex ?? nearestSnap(snaps, position)
     const snapCount = snaps.length
+    const slideCount = layout.slides.length
+    if (loop) {
+      const looping = snapCount > 1
+      return {
+        index: pending?.index ?? mod(virtualAt(loop, position), snapCount),
+        snapCount,
+        slideCount,
+        canPrev: looping,
+        canNext: looping,
+        progress: loopProgress(loop, position),
+        loopCopies,
+      }
+    }
+    const index = pending?.index ?? nearestSnap(snaps, position)
     const movable = snapCount > 1
     return {
       index,
       snapCount,
-      slideCount: layout.slides.length,
+      slideCount,
       canPrev: movable && (resolved.rewind || index > 0),
       canNext: movable && (resolved.rewind || index < snapCount - 1),
       progress: progressOf(snaps, position),
-      loopCopies: 0,
+      loopCopies,
     }
   }
 
@@ -134,7 +204,10 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
 
   function jumpToSnap(index: number): void {
     if (snaps.length === 0) return
-    const position = snaps[clampIndex(index)]
+    jumpTo(snaps[clampIndex(index)])
+  }
+
+  function jumpTo(position: number): void {
     viewport.scrollTo(
       axis === 'x'
         ? { left: position, behavior: 'instant' }
@@ -160,8 +233,31 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
   function navigate(index: number, navigateOptions: NavigateOptions = {}): void {
     // The engine owns snap suspension so a newer navigation never has snap restored under it.
     holdSnap()
-    pendingIndex = index
-    const position = snaps[index]
+    animateTo({ index, virtual: index }, snaps[index], navigateOptions)
+  }
+
+  /** Navigate a loop from virtual snap `from` to virtual snap `target`, through clones. */
+  function navigateLoop(
+    active: Loop,
+    from: number,
+    target: number,
+    navigateOptions: NavigateOptions = {}
+  ): void {
+    holdSnap()
+    // Shift by whole periods so `from` lies in the real set and the target stays in the buffer.
+    const n = active.snaps.length
+    const copy = Math.floor(from / n)
+    if (copy !== 0) jumpTo(livePosition() - active.direction * copy * active.period)
+    const virtual = target - copy * n
+    animateTo({ index: mod(virtual, n), virtual }, positionOf(active, virtual), navigateOptions)
+  }
+
+  function loopFrom(active: Loop): number {
+    return pending?.virtual ?? virtualAt(active, livePosition())
+  }
+
+  function animateTo(target: Pending, position: number, navigateOptions: NavigateOptions): void {
+    pending = target
     const handle = animateScroll(viewport, axis === 'x' ? { x: position } : { y: position }, {
       animation: navigateOptions.animation ?? resolved.animation,
     })
@@ -170,9 +266,10 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
     void handle.finished.then(() => {
       if (current !== handle) return
       current = null
-      pendingIndex = null
+      pending = null
       releaseSnap()
       update(livePosition())
+      recentre()
     })
   }
 
@@ -196,15 +293,25 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
     },
     next(navigateOptions) {
       assertAlive()
+      if (loop) {
+        const from = loopFrom(loop)
+        if (snaps.length > 1) navigateLoop(loop, from, from + 1, navigateOptions)
+        return
+      }
       const last = snaps.length - 1
-      const from = pendingIndex ?? state.index
+      const from = pending?.index ?? state.index
       if (from < last) navigate(from + 1, navigateOptions)
       else if (resolved.rewind && last > 0) navigate(0, navigateOptions)
     },
     prev(navigateOptions) {
       assertAlive()
+      if (loop) {
+        const from = loopFrom(loop)
+        if (snaps.length > 1) navigateLoop(loop, from, from - 1, navigateOptions)
+        return
+      }
       const last = snaps.length - 1
-      const from = pendingIndex ?? state.index
+      const from = pending?.index ?? state.index
       if (from > 0) navigate(from - 1, navigateOptions)
       else if (resolved.rewind && last > 0) navigate(last, navigateOptions)
     },
@@ -212,6 +319,11 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
       assertAlive()
       assertInteger(index, 'index')
       if (snaps.length === 0) return
+      if (loop) {
+        const from = loopFrom(loop)
+        navigateLoop(loop, from, nearestCongruent(from, index, snaps.length), navigateOptions)
+        return
+      }
       navigate(clampIndex(index), navigateOptions)
     },
     destroy() {
@@ -226,13 +338,20 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
       window.removeEventListener('pointercancel', onPointerUp)
       current?.cancel()
       current = null
-      pendingIndex = null
+      pending = null
       releaseSnap()
       for (const slide of tracked) slide.style.removeProperty('scroll-snap-align')
+      for (const clone of layout.clones) clone.style.removeProperty('scroll-snap-align')
       tracked.clear()
       listeners.clear()
     },
   }
+}
+
+/** The loop is active once a renderer has put `copies` full sets of clones on each side. */
+function isLoopActive(layout: Layout, copies: number): boolean {
+  const expected = copies * layout.slides.length
+  return expected > 0 && layout.clonesBefore === expected && layout.clonesAfter === expected
 }
 
 function resolveOptions(options: SliderOptions): ResolvedOptions {

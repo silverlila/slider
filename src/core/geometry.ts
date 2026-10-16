@@ -21,6 +21,9 @@ export interface Layout {
   slides: HTMLElement[]
   /** `[data-slider-clone]` children, DOM order. */
   clones: HTMLElement[]
+  /** Clones before the first real slide and after the last one. */
+  clonesBefore: number
+  clonesAfter: number
   /** One per real slide. */
   boxes: Box[]
   gap: number
@@ -44,19 +47,30 @@ export function readLayout(viewport: HTMLElement, axis: Axis): Layout {
   const children = Array.from(viewport.children).filter(
     (child): child is HTMLElement => child instanceof HTMLElement
   )
-  const slides = children.filter((child) => !child.hasAttribute('data-slider-clone'))
-  const clones = children.filter((child) => child.hasAttribute('data-slider-clone'))
+  const slides = children.filter((child) => !isClone(child))
+  const clones = children.filter(isClone)
   const direction: Direction = axis === 'x' && style.direction === 'rtl' ? -1 : 1
   const scroll = readScroll(viewport)
   return {
     slides,
     clones,
+    clonesBefore: countLeadingClones(children),
+    clonesAfter: countLeadingClones([...children].reverse()),
     boxes: slides.map((slide) => readBox(slide, axis)),
     gap: parseGap(axis === 'x' ? style.columnGap : style.rowGap),
     port: readPort(viewport, style, axis, direction),
     range: axis === 'x' ? { min: scroll.minX, max: scroll.maxX } : { min: 0, max: scroll.maxY },
     direction,
   }
+}
+
+function isClone(child: HTMLElement): boolean {
+  return child.hasAttribute('data-slider-clone')
+}
+
+function countLeadingClones(children: HTMLElement[]): number {
+  const firstReal = children.findIndex((child) => !isClone(child))
+  return firstReal === -1 ? children.length : firstReal
 }
 
 function readBox(slide: HTMLElement, axis: Axis): Box {
@@ -178,6 +192,94 @@ export function progressOf(positions: number[], p: number): number {
   const first = positions[0]
   const last = positions[positions.length - 1]
   return clamp((p - first) / (last - first), 0, 1)
+}
+
+/**
+ * A looping slide set. Positions are in scroll coordinates; offsets along the loop are logical
+ * (`direction × (p − snaps[0])`), so they grow along slide order in every direction.
+ */
+export interface Loop {
+  /** Aligned positions of the real set's anchors, unclamped. */
+  snaps: number[]
+  /** Distance between a slide and the same slide in the next copy. */
+  period: number
+  direction: Direction
+}
+
+/** Span of the real slides plus one gap; 0 when there are no slides. */
+export function periodOf(layout: Layout): number {
+  if (layout.boxes.length === 0) return 0
+  return unionSize(layout.boxes) + layout.gap
+}
+
+/** Each anchor's aligned position, neither clamped nor merged. */
+export function loopSnapPositions(layout: Layout, anchorIndexes: number[], align: Align): number[] {
+  const { boxes, port, direction } = layout
+  return anchorIndexes.map((index) => alignedPosition(boxes[index], port, align, direction))
+}
+
+/** Copies of the slide set needed on each side: two viewports of buffer, at least one. */
+export function copiesNeeded(layout: Layout): number {
+  const period = periodOf(layout)
+  return period > 0 ? Math.max(1, Math.ceil((2 * layout.port.size) / period)) : 0
+}
+
+/** The position equivalent to `p` inside the real set. */
+export function canonical(loop: Loop, p: number): number {
+  return loop.snaps[0] + loop.direction * mod(logicalOffset(loop, p), loop.period)
+}
+
+/** Position of virtual snap `v`: real snap `mod(v, n)` in copy `Math.floor(v / n)`. */
+export function positionOf(loop: Loop, v: number): number {
+  const n = loop.snaps.length
+  const offset = logicalOffset(loop, loop.snaps[mod(v, n)]) + Math.floor(v / n) * loop.period
+  return loop.snaps[0] + loop.direction * offset
+}
+
+/** Virtual index of the snap nearest to `p`, across copies. */
+export function virtualAt(loop: Loop, p: number): number {
+  const n = loop.snaps.length
+  const u = logicalOffset(loop, p)
+  const copy = Math.floor(u / loop.period)
+  const r = u - copy * loop.period
+  let nearest = 0
+  let nearestDistance = Infinity
+  let wrapped = false
+  loop.snaps.forEach((snap, i) => {
+    const direct = Math.abs(r - logicalOffset(loop, snap))
+    const around = loop.period - direct
+    const distance = Math.min(direct, around)
+    if (distance >= nearestDistance) return
+    nearest = i
+    nearestDistance = distance
+    wrapped = around < direct
+  })
+  const ownerCopy = wrapped && r > logicalOffset(loop, loop.snaps[nearest]) ? copy + 1 : copy
+  return ownerCopy * n + nearest
+}
+
+/** The virtual index congruent to `index` (mod `n`) nearest to `from`; ties go forward. */
+export function nearestCongruent(from: number, index: number, n: number): number {
+  const base = from - mod(from, n) + mod(index, n)
+  // Forward candidate first: a later candidate must be strictly nearer to replace it.
+  let nearest = base + n
+  for (const candidate of [base, base - n]) {
+    if (Math.abs(candidate - from) < Math.abs(nearest - from)) nearest = candidate
+  }
+  return nearest
+}
+
+/** 0..1 through one period, starting at the first real snap. */
+export function loopProgress(loop: Loop, p: number): number {
+  return mod(logicalOffset(loop, p), loop.period) / loop.period
+}
+
+function logicalOffset(loop: Loop, p: number): number {
+  return loop.direction * (p - loop.snaps[0])
+}
+
+export function mod(a: number, n: number): number {
+  return ((a % n) + n) % n
 }
 
 function clamp(value: number, min: number, max: number): number {
