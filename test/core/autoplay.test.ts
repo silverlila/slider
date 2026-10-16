@@ -1,4 +1,13 @@
-import { describe, expect, onTestFinished, test } from 'vitest'
+/**
+ * Behaviour tests for the autoplay plugin, on real timers.
+ *
+ * Elements mount at the top left of the page, and Chromium fires a real `pointerenter` on an
+ * element that appears under a cursor an earlier click left there, which pauses autoplay; so each
+ * test first parks the cursor in the opposite corner.
+ */
+/// <reference types="@vitest/browser-playwright" />
+import { beforeEach, describe, expect, onTestFinished, test } from 'vitest'
+import { cdp, userEvent } from 'vitest/browser'
 import {
   autoplay,
   createSlider,
@@ -6,16 +15,11 @@ import {
   type Slider,
   type SliderOptions,
 } from '../../src/core'
-import { mount } from '../helpers/dom'
+import { mount, wait } from '../helpers/dom'
 import { mountViewport } from '../helpers/fixtures'
 import { emulateReducedMotion } from '../helpers/media'
 
 const INSTANT: SliderOptions = { animation: { type: 'instant' } }
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-/** Every index the slider moves to over 150ms: several 40ms delays, so a running autoplay moves. */
 async function movesOverQuietPeriod(slider: Slider): Promise<number[]> {
   const moves: number[] = []
   let last = slider.getState().index
@@ -29,7 +33,6 @@ async function movesOverQuietPeriod(slider: Slider): Promise<number[]> {
   return moves
 }
 
-// Three 300px slides in a 300px viewport: snaps at 0, 300, 600.
 function mountThreeSlides() {
   return mountViewport({ width: 300, slides: 3, perView: 1, gap: 0 })
 }
@@ -54,6 +57,14 @@ function setVisibility(value: DocumentVisibilityState): void {
 }
 
 describe('autoplay', () => {
+  beforeEach(async () => {
+    await cdp().send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: window.innerWidth - 1,
+      y: window.innerHeight - 1,
+    })
+  })
+
   test('advances one snap every delay', async () => {
     const { slider } = create(mountThreeSlides())
 
@@ -78,17 +89,57 @@ describe('autoplay', () => {
     await expect.poll(() => slider.getState().index).toBe(1)
   })
 
-  test('pauses while focus is inside the root', async () => {
+  test('pauses while keyboard focus is inside the root', async () => {
     const viewport = mountThreeSlides()
     const root = mount(document.createElement('div'))
     const button = document.createElement('button')
     root.append(button, viewport)
     const { slider } = create(viewport, { root })
 
-    button.focus()
+    await userEvent.keyboard('{Tab}')
+    expect(document.activeElement).toBe(button)
     expect(await movesOverQuietPeriod(slider)).toEqual([])
 
     button.blur()
+    await expect.poll(() => slider.getState().index).toBe(1)
+  })
+
+  test('keeps playing when a click leaves focus on a button inside the root', async () => {
+    const viewport = mountThreeSlides()
+    const root = mount(document.createElement('div'))
+    const button = document.createElement('button')
+    button.textContent = 'Next'
+    root.append(button, viewport)
+    const { slider } = create(viewport, { root, pauseOnHover: false })
+
+    await userEvent.click(button)
+    expect(document.activeElement).toBe(button)
+
+    expect(await movesOverQuietPeriod(slider)).not.toEqual([])
+  })
+
+  test('play() resumes while the pointer is still over the root', async () => {
+    const viewport = mountThreeSlides()
+    const { slider, player } = create(viewport)
+    viewport.dispatchEvent(new PointerEvent('pointerenter'))
+    player.stop()
+
+    player.play()
+
+    await expect.poll(() => slider.getState().index).toBe(1)
+  })
+
+  test('play() resumes while keyboard focus is inside the root', async () => {
+    const viewport = mountThreeSlides()
+    const root = mount(document.createElement('div'))
+    const button = document.createElement('button')
+    root.append(button, viewport)
+    const { slider, player } = create(viewport, { root })
+    await userEvent.keyboard('{Tab}')
+    player.stop()
+
+    player.play()
+
     await expect.poll(() => slider.getState().index).toBe(1)
   })
 

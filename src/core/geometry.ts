@@ -1,35 +1,28 @@
 import { readScroll, type Axis } from 'use-scroller/core'
 import type { Align } from './types'
 
-/** A slide's edges in scroll coordinates along the axis. */
 export interface Box {
   start: number
   end: number
 }
 
-/** The viewport's size along the axis and its scroll-padding at the logical start and end. */
-export interface Port {
+interface Port {
   size: number
-  paddingStart: number
-  paddingEnd: number
+  paddingBefore: number
+  paddingAfter: number
 }
 
-export type Direction = 1 | -1
+type Direction = 1 | -1
 
 export interface Layout {
-  /** Real slides, DOM order. */
   slides: HTMLElement[]
-  /** `[data-slider-clone]` children, DOM order. */
   clones: HTMLElement[]
-  /** Clones before the first real slide and after the last one. */
   clonesBefore: number
   clonesAfter: number
-  /** One per real slide. */
   boxes: Box[]
   gap: number
   port: Port
   range: { min: number; max: number }
-  /** -1 only for axis 'x' in a right-to-left viewport. */
   direction: Direction
 }
 
@@ -44,9 +37,7 @@ export function readLayout(viewport: HTMLElement, axis: Axis): Layout {
       'Slider viewport must be positioned; add position: relative (the stylesheet does this)'
     )
   }
-  const children = Array.from(viewport.children).filter(
-    (child): child is HTMLElement => child instanceof HTMLElement
-  )
+  const children = childrenOf(viewport)
   const slides = children.filter((child) => !isClone(child))
   const clones = children.filter(isClone)
   const direction: Direction = axis === 'x' && style.direction === 'rtl' ? -1 : 1
@@ -58,7 +49,7 @@ export function readLayout(viewport: HTMLElement, axis: Axis): Layout {
     clonesAfter: countLeadingClones([...children].reverse()),
     boxes: slides.map((slide) => readBox(slide, axis)),
     gap: parseGap(axis === 'x' ? style.columnGap : style.rowGap),
-    port: readPort(viewport, style, axis, direction),
+    port: readPort(viewport, style, axis),
     range: axis === 'x' ? { min: scroll.minX, max: scroll.maxX } : { min: 0, max: scroll.maxY },
     direction,
   }
@@ -73,7 +64,13 @@ function countLeadingClones(children: HTMLElement[]): number {
   return firstReal === -1 ? children.length : firstReal
 }
 
-function readBox(slide: HTMLElement, axis: Axis): Box {
+export function childrenOf(viewport: HTMLElement): HTMLElement[] {
+  return Array.from(viewport.children).filter(
+    (child): child is HTMLElement => child instanceof HTMLElement
+  )
+}
+
+export function readBox(slide: HTMLElement, axis: Axis): Box {
   if (axis === 'x') return { start: slide.offsetLeft, end: slide.offsetLeft + slide.offsetWidth }
   return { start: slide.offsetTop, end: slide.offsetTop + slide.offsetHeight }
 }
@@ -82,24 +79,19 @@ function parseGap(value: string): number {
   return value === 'normal' ? 0 : parseFloat(value)
 }
 
-function readPort(
-  viewport: HTMLElement,
-  style: CSSStyleDeclaration,
-  axis: Axis,
-  direction: Direction
-): Port {
+function readPort(viewport: HTMLElement, style: CSSStyleDeclaration, axis: Axis): Port {
   const size = axis === 'x' ? viewport.clientWidth : viewport.clientHeight
-  const before = resolvePadding(
-    axis === 'x' ? style.scrollPaddingLeft : style.scrollPaddingTop,
-    size
-  )
-  const after = resolvePadding(
-    axis === 'x' ? style.scrollPaddingRight : style.scrollPaddingBottom,
-    size
-  )
-  return direction === 1
-    ? { size, paddingStart: before, paddingEnd: after }
-    : { size, paddingStart: after, paddingEnd: before }
+  return {
+    size,
+    paddingBefore: resolvePadding(
+      axis === 'x' ? style.scrollPaddingLeft : style.scrollPaddingTop,
+      size
+    ),
+    paddingAfter: resolvePadding(
+      axis === 'x' ? style.scrollPaddingRight : style.scrollPaddingBottom,
+      size
+    ),
+  }
 }
 
 function resolvePadding(value: string, size: number): number {
@@ -108,11 +100,9 @@ function resolvePadding(value: string, size: number): number {
   return parseFloat(value)
 }
 
-/** The scroll position that puts `box` at the aligned spot of the port. */
 export function alignedPosition(box: Box, port: Port, align: Align, direction: Direction): number {
-  // Physical left/top and right/bottom paddings; in RTL the logical start is on the right.
-  const before = direction === 1 ? port.paddingStart : port.paddingEnd
-  const after = direction === 1 ? port.paddingEnd : port.paddingStart
+  const before = port.paddingBefore
+  const after = port.paddingAfter
   const physicalAlign = direction === 1 ? align : MIRRORED[align]
   switch (physicalAlign) {
     case 'start':
@@ -128,10 +118,9 @@ export function alignedPosition(box: Box, port: Port, align: Align, direction: D
   }
 }
 
-/** Slides per group: the given number, or for `'auto'` how many from slide 0 fully fit. */
 export function groupSize(layout: Layout, slidesPerMove: number | 'auto'): number {
   if (slidesPerMove !== 'auto') return slidesPerMove
-  const available = layout.port.size - layout.port.paddingStart - layout.port.paddingEnd
+  const available = layout.port.size - layout.port.paddingBefore - layout.port.paddingAfter
   let size = 1
   while (size < layout.boxes.length) {
     const span = unionSize(layout.boxes.slice(0, size + 1))
@@ -147,7 +136,6 @@ function unionSize(boxes: Box[]): number {
   return end - start
 }
 
-/** The anchor slide index of each group of `size` consecutive slides. */
 export function anchors(slideCount: number, size: number, align: Align): number[] {
   const result: number[] = []
   for (let first = 0; first < slideCount; first += size) {
@@ -163,7 +151,6 @@ function anchorOf(first: number, last: number, align: Align): number {
   return Math.floor((first + last) / 2)
 }
 
-/** Each anchor's aligned position clamped to the scroll range, near-duplicates merged. */
 export function snapPositions(layout: Layout, anchorIndexes: number[], align: Align): number[] {
   const { boxes, port, range, direction } = layout
   const positions: number[] = []
@@ -177,7 +164,6 @@ export function snapPositions(layout: Layout, anchorIndexes: number[], align: Al
   return positions
 }
 
-/** Index of the position closest to `p`; ties go to the lower index; 0 when there are none. */
 export function nearestSnap(positions: number[], p: number): number {
   let nearest = 0
   for (let i = 1; i < positions.length; i++) {
@@ -186,7 +172,6 @@ export function nearestSnap(positions: number[], p: number): number {
   return nearest
 }
 
-/** 0..1 from the first snap to the last; 0 when there are fewer than two snaps. */
 export function progressOf(positions: number[], p: number): number {
   if (positions.length < 2) return 0
   const first = positions[0]
@@ -194,49 +179,37 @@ export function progressOf(positions: number[], p: number): number {
   return clamp((p - first) / (last - first), 0, 1)
 }
 
-/**
- * A looping slide set. Positions are in scroll coordinates; offsets along the loop are logical
- * (`direction × (p − snaps[0])`), so they grow along slide order in every direction.
- */
 export interface Loop {
-  /** Aligned positions of the real set's anchors, unclamped. */
   snaps: number[]
-  /** Distance between a slide and the same slide in the next copy. */
   period: number
   direction: Direction
 }
 
-/** Span of the real slides plus one gap; 0 when there are no slides. */
 export function periodOf(layout: Layout): number {
   if (layout.boxes.length === 0) return 0
   return unionSize(layout.boxes) + layout.gap
 }
 
-/** Each anchor's aligned position, neither clamped nor merged. */
 export function loopSnapPositions(layout: Layout, anchorIndexes: number[], align: Align): number[] {
   const { boxes, port, direction } = layout
   return anchorIndexes.map((index) => alignedPosition(boxes[index], port, align, direction))
 }
 
-/** Copies of the slide set needed on each side: two viewports of buffer, at least one. */
 export function copiesNeeded(layout: Layout): number {
   const period = periodOf(layout)
   return period > 0 ? Math.max(1, Math.ceil((2 * layout.port.size) / period)) : 0
 }
 
-/** The position equivalent to `p` inside the real set. */
 export function canonical(loop: Loop, p: number): number {
   return loop.snaps[0] + loop.direction * mod(logicalOffset(loop, p), loop.period)
 }
 
-/** Position of virtual snap `v`: real snap `mod(v, n)` in copy `Math.floor(v / n)`. */
 export function positionOf(loop: Loop, v: number): number {
   const n = loop.snaps.length
   const offset = logicalOffset(loop, loop.snaps[mod(v, n)]) + Math.floor(v / n) * loop.period
   return loop.snaps[0] + loop.direction * offset
 }
 
-/** Virtual index of the snap nearest to `p`, across copies. */
 export function virtualAt(loop: Loop, p: number): number {
   const n = loop.snaps.length
   const u = logicalOffset(loop, p)
@@ -258,10 +231,8 @@ export function virtualAt(loop: Loop, p: number): number {
   return ownerCopy * n + nearest
 }
 
-/** The virtual index congruent to `index` (mod `n`) nearest to `from`; ties go forward. */
 export function nearestCongruent(from: number, index: number, n: number): number {
   const base = from - mod(from, n) + mod(index, n)
-  // Forward candidate first: a later candidate must be strictly nearer to replace it.
   let nearest = base + n
   for (const candidate of [base, base - n]) {
     if (Math.abs(candidate - from) < Math.abs(nearest - from)) nearest = candidate
@@ -269,7 +240,6 @@ export function nearestCongruent(from: number, index: number, n: number): number
   return nearest
 }
 
-/** 0..1 through one period, starting at the first real snap. */
 export function loopProgress(loop: Loop, p: number): number {
   return mod(logicalOffset(loop, p), loop.period) / loop.period
 }

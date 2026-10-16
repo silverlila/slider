@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Slider, useSliderContext, useSliderState } from '../src/react'
+import { CodeBlock, type Snippet } from './code-block'
+import logoUrl from './logo.svg'
+import { SNIPPETS } from './snippets'
 import { mountVanillaSlider } from './vanilla'
 
 type HueStyle = CSSProperties & { '--hue': number }
 
-/** A distinct hue per slide, so neighbouring cards never look alike. */
 function hueStyle(index: number): HueStyle {
   return { '--hue': (215 + index * 47) % 360 }
 }
@@ -54,7 +56,6 @@ function NextButton() {
   )
 }
 
-/** "3 / 8": the active snap and how many snaps there are. */
 function Counter() {
   const { index, snapCount } = useSliderContext()
   return (
@@ -68,11 +69,13 @@ function Demo({
   id,
   title,
   description,
+  code,
   children,
 }: {
   id: string
   title: string
   description: ReactNode
+  code: Snippet[]
   children: ReactNode
 }) {
   return (
@@ -82,14 +85,22 @@ function Demo({
         <p>{description}</p>
       </header>
       {children}
+      {code.map((snippet) => (
+        <CodeBlock key={snippet.file} {...snippet} />
+      ))}
     </section>
   )
 }
 
 function BasicDemo() {
   return (
-    <Demo id="basic" title="Basic" description="One slide per view with buttons and dots.">
-      <Slider label="Basic" className="slider">
+    <Demo
+      id="basic"
+      code={SNIPPETS.basic}
+      title="Basic"
+      description="One slide per view with buttons and dots."
+    >
+      <Slider label="Basic" gap={12} className="slider">
         <Slider.Viewport className="viewport">{cards(5)}</Slider.Viewport>
         <div className="controls controls--spread">
           <PrevButton />
@@ -105,6 +116,7 @@ function MultipleDemo() {
   return (
     <Demo
       id="multiple"
+      code={SNIPPETS.multiple}
       title="Multiple per view"
       description={
         <>
@@ -134,6 +146,7 @@ function ResponsiveDemo() {
   return (
     <Demo
       id="responsive"
+      code={SNIPPETS.responsive}
       title="Responsive"
       description={
         <>
@@ -160,6 +173,7 @@ function LoopDemo() {
   return (
     <Demo
       id="loop"
+      code={SNIPPETS.loop}
       title="Loop, centred"
       description="An infinite loop with the neighbours peeking in. Keep going in either direction."
     >
@@ -199,10 +213,11 @@ function AutoplayDemo() {
   return (
     <Demo
       id="autoplay"
+      code={SNIPPETS.autoplay}
       title="Rewind and autoplay"
-      description="Advances every 3 seconds and rewinds to the first slide at the end. Hovering or focusing the slider pauses it; dragging, wheeling or a key press stops it."
+      description="Advances every second and rewinds to the first slide at the end. Hovering or focusing the slider pauses it; dragging, wheeling or a key press stops it."
     >
-      <Slider label="Autoplay" rewind autoplay={{ delay: 3000 }} gap={12} className="slider">
+      <Slider label="Autoplay" rewind autoplay={{ delay: 1000 }} gap={12} className="slider">
         <Slider.Viewport className="viewport">{cards(5)}</Slider.Viewport>
         <div className="controls">
           <PrevButton />
@@ -231,6 +246,7 @@ function EffectsDemo() {
   return (
     <Demo
       id="effects"
+      code={SNIPPETS.effects}
       title="Effects"
       description={
         <>
@@ -264,6 +280,7 @@ function ThumbnailsDemo() {
   return (
     <Demo
       id="thumbnails"
+      code={SNIPPETS.thumbnails}
       title="Thumbnails"
       description="The strip follows the gallery, and choosing a thumbnail moves the gallery."
     >
@@ -288,7 +305,12 @@ function ThumbnailsDemo() {
 
 function VerticalDemo() {
   return (
-    <Demo id="vertical" title="Vertical" description={<code>axis="y"</code>}>
+    <Demo
+      id="vertical"
+      code={SNIPPETS.vertical}
+      title="Vertical"
+      description={<code>axis="y"</code>}
+    >
       <Slider label="Vertical" axis="y" gap={12} className="slider slider--vertical">
         <Slider.Viewport className="viewport viewport--vertical">
           {cards(5, 'card card--fill')}
@@ -307,6 +329,7 @@ function RtlDemo() {
   return (
     <Demo
       id="rtl"
+      code={SNIPPETS.rtl}
       title="Right to left"
       description={
         <>
@@ -328,7 +351,6 @@ function RtlDemo() {
   )
 }
 
-/** Follows the real scroll position, so it moves every frame without re-rendering the slider. */
 function ScrollProgress() {
   const { slider } = useSliderContext()
   const progress = useSliderState(slider, (state) => state.progress)
@@ -346,6 +368,7 @@ function ControlledDemo() {
   return (
     <Demo
       id="controlled"
+      code={SNIPPETS.controlled}
       title="Controlled"
       description={
         <>
@@ -402,6 +425,7 @@ function VanillaDemo() {
   return (
     <Demo
       id="vanilla"
+      code={SNIPPETS.vanilla}
       title="Plain JavaScript"
       description={
         <>
@@ -419,7 +443,10 @@ export function App() {
   return (
     <main className="page">
       <header className="page-header">
-        <h1>@silverlila/slider</h1>
+        <h1>
+          <img src={logoUrl} alt="" width={32} height={32} />
+          @silverlila/slider
+        </h1>
         <p>
           Sliders that move with the browser’s own scrolling. Swipe, drag with the mouse, scroll
           with a trackpad or wheel, or focus a slider and use the arrow keys.

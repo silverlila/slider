@@ -71,7 +71,6 @@ function SliderRoot({
     [result, viewportId, resolvedAxis]
   )
   const rootRef = useMergedRef(result.rootRef, ref)
-  // Set on the root so they inherit to the viewport, where user media queries can override them.
   const variables: CSSVariables = {
     '--slider-per-view': perView === 'auto' ? undefined : perView,
     '--slider-gap': typeof gap === 'number' ? `${gap}px` : gap,
@@ -140,7 +139,6 @@ function SliderSlide(props: ComponentProps<'div'>) {
   if (slide === null) throw new Error('<Slider.Slide> must be rendered inside <Slider.Viewport>')
 
   if (slide.clone) {
-    // A clone is a visual copy only: hidden from assistive tech, unreachable, and without an id.
     return (
       <div
         data-slider-slide=""
@@ -278,14 +276,13 @@ function SliderThumbs({
   ...props
 }: SliderThumbsProps) {
   const main = useSliderContext()
-  const thumbs = useSlider({ axis, align: 'start', draggable: true })
+  const thumbs = useSlider({ axis })
 
   useEffect(() => {
     if (main.slider === null || thumbs.slider === null) return
     return syncSliders(main.slider, thumbs.slider)
   }, [main.slider, thumbs.slider])
 
-  // `initial` rather than unset, so the main slider's values are not inherited.
   const variables: CSSVariables = {
     '--slider-per-view': perView === 'auto' ? 'initial' : perView,
     '--slider-gap': gap === undefined ? 'initial' : typeof gap === 'number' ? `${gap}px` : gap,
@@ -311,7 +308,6 @@ function SliderThumb(props: ComponentProps<'button'>) {
   const { viewportId } = useSliderContext()
   const index = use(ThumbContext)
   if (index === null) throw new Error('<Slider.Thumb> must be rendered inside <Slider.Thumbs>')
-  // Selection attributes and the click that navigates belong to `syncSliders`.
   return (
     <button
       type="button"
@@ -334,12 +330,10 @@ export const Slider = Object.assign(SliderRoot, {
   Thumb: SliderThumb,
 })
 
-/** The key `Children.toArray` gave an element, or its position for text children. */
 function keyOf(child: ReactNode, position: number): string {
   return isValidElement(child) && child.key !== null ? child.key : String(position)
 }
 
-/** One callback ref that attaches `own` and the caller's `ref`, stable while both are. */
 function useMergedRef<T>(
   own: (element: T | null) => void,
   ref: Ref<T> | undefined

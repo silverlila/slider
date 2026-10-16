@@ -49,7 +49,6 @@ function realSlides(viewport: HTMLElement): Element[] {
   return Array.from(viewport.children).filter((child) => !child.hasAttribute(CLONE_ATTRIBUTE))
 }
 
-/** A real slide's position among real slides, or the real index a clone copies. */
 function slideIndexOf(viewport: HTMLElement, child: Element): number {
   const source = child.getAttribute(CLONE_ATTRIBUTE)
   return source === null ? realSlides(viewport).indexOf(child) : Number(source)

@@ -1,8 +1,13 @@
+/**
+ * Per-slide scroll progress as CSS custom properties, for scroll-linked effects.
+ *
+ * use-scroller's `observeScroll` calls back once immediately, then at most once per frame after a
+ * scroll or a resize of the viewport or its slides.
+ */
 import { observeScroll } from 'use-scroller/core'
-import { alignedPosition, readLayout, type Box, type Layout } from './geometry'
-import type { Axis, Slider } from './types'
+import { alignedPosition, childrenOf, readBox, readLayout, type Layout } from './geometry'
+import type { Slider } from './types'
 
-/** What a layout change can alter; the computed styles are re-read whenever it differs. */
 interface LayoutKey {
   childCount: number
   portSize: number
@@ -38,7 +43,6 @@ export function slideProgress(slider: Slider): () => void {
     const children = childrenOf(viewport)
     const { port, gap, direction } = currentMetrics(children)
     const position = axis === 'x' ? viewport.scrollLeft : viewport.scrollTop
-    // Read every box before writing any property, so the writes never force a layout.
     const values = children.map((child) => {
       const box = readBox(child, axis)
       const aligned = alignedPosition(box, port, align, direction)
@@ -50,7 +54,6 @@ export function slideProgress(slider: Slider): () => void {
     })
   }
 
-  // Emits once now, then once per frame after a scroll or a resize of the viewport or its slides.
   const stopObserving = observeScroll(viewport, write)
   return () => {
     stopObserving()
@@ -63,19 +66,6 @@ export function slideProgress(slider: Slider): () => void {
 
 function isSameKey(a: LayoutKey, b: LayoutKey): boolean {
   return a.childCount === b.childCount && a.portSize === b.portSize
-}
-
-function childrenOf(viewport: HTMLElement): HTMLElement[] {
-  return Array.from(viewport.children).filter(
-    (child): child is HTMLElement => child instanceof HTMLElement
-  )
-}
-
-function readBox(element: HTMLElement, axis: Axis): Box {
-  if (axis === 'x') {
-    return { start: element.offsetLeft, end: element.offsetLeft + element.offsetWidth }
-  }
-  return { start: element.offsetTop, end: element.offsetTop + element.offsetHeight }
 }
 
 function round(value: number): number {

@@ -1,8 +1,14 @@
+/**
+ * Subscribing React components to a slider's state, one selected slice at a time.
+ *
+ * `useSyncExternalStore` requires `getSnapshot` to return the identical value while nothing
+ * changed, or React re-renders forever; so the last selection is cached and reused while
+ * `isEqual` holds.
+ */
 import { useCallback, useRef, useSyncExternalStore } from 'react'
 import type { Slider, SliderState } from '../core'
 
-/** What a slider reads as before its engine exists: on the server and before mount. */
-export const INITIAL_STATE: SliderState = {
+const INITIAL_STATE: SliderState = {
   index: 0,
   snapCount: 0,
   slideCount: 0,
@@ -31,7 +37,6 @@ export function useSliderState<T>(
     [slider]
   )
 
-  // Returning the cached selection while it is equal keeps useSyncExternalStore from looping.
   function select(state: SliderState): T {
     const next = selector(state)
     const previous = last.current

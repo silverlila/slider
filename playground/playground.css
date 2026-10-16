@@ -1,3 +1,7 @@
+/*
+ * Playground page styling. Grid columns that hold sliders use `minmax(0, 1fr)`: a column sized to
+ * its content would let the slides stretch the page.
+ */
 :root {
   color-scheme: light dark;
   --color-page: oklch(0.985 0.004 260);
@@ -9,10 +13,18 @@
   --color-border: oklch(0.24 0.02 260 / 0.12);
   --color-track: oklch(0.24 0.02 260 / 0.1);
   --color-code: oklch(0.24 0.02 260 / 0.06);
-  /* Card colours: lightness and chroma here, the hue per slide in --hue. */
   --card-background-lc: 0.88 0.07;
   --card-text-lc: 0.36 0.1;
   --radius: 12px;
+  --sh-class: #2d5e9d;
+  --sh-identifier: var(--color-text);
+  --sh-sign: #69727d;
+  --sh-property: #0550ae;
+  --sh-entity: #1f7f7c;
+  --sh-jsxliterals: #5054c4;
+  --sh-string: #0a7a6e;
+  --sh-keyword: #c4372d;
+  --sh-comment: #6f757d;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -28,6 +40,14 @@
     --color-code: oklch(1 0 0 / 0.08);
     --card-background-lc: 0.4 0.09;
     --card-text-lc: 0.93 0.05;
+    --sh-class: #8fb8f0;
+    --sh-sign: #8b95a1;
+    --sh-property: #79b8ff;
+    --sh-entity: #5fd1c9;
+    --sh-jsxliterals: #b4a7ff;
+    --sh-string: #7ee0c3;
+    --sh-keyword: #ff8a80;
+    --sh-comment: #8b919a;
   }
 }
 
@@ -83,6 +103,9 @@ code {
 }
 
 .page-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 28px;
   font-weight: 650;
   line-height: 1.2;
@@ -114,11 +137,8 @@ code {
   text-wrap: balance;
 }
 
-/* Slider layout */
-
 .slider {
   display: grid;
-  /* minmax(0, …): a column sized to its content would let the slides stretch the page. */
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
@@ -152,8 +172,6 @@ code {
   height: 320px;
 }
 
-/* Slides */
-
 .card {
   display: grid;
   place-items: center;
@@ -179,18 +197,14 @@ code {
   font-size: 40px;
 }
 
-/* Sized by the vertical viewport's flex basis instead. */
 .card--fill {
   height: auto;
 }
 
-/* Scales around the centre (the default transform-origin), so snapping is unaffected. */
 .card--effect {
   scale: calc(1 - min(var(--slide-distance, 0), 1) * 0.15);
   opacity: calc(1 - min(var(--slide-distance, 0), 1) * 0.5);
 }
-
-/* Controls */
 
 .controls {
   display: flex;
@@ -254,7 +268,6 @@ code {
   }
 }
 
-/* The chevron points forward; it flips for Previous, for right-to-left and turns for vertical. */
 .chevron--back,
 [dir='rtl'] .chevron {
   scale: -1 1;
@@ -273,8 +286,6 @@ code {
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
 }
-
-/* Dots: a 44px hit area around an 8px mark. */
 
 .dots {
   display: flex;
@@ -313,8 +324,6 @@ code {
   }
 }
 
-/* Thumbnails */
-
 .thumb {
   height: 52px;
   padding: 0;
@@ -331,7 +340,6 @@ code {
   transition: opacity 150ms ease-out;
 }
 
-/* The strip clips anything drawn outside a thumbnail, so its rings sit inside. */
 .thumb[data-selected] {
   opacity: 1;
   box-shadow: inset 0 0 0 2px currentColor;
@@ -347,8 +355,6 @@ code {
     opacity: 1;
   }
 }
-
-/* Controlled demo */
 
 .progress {
   height: 4px;
@@ -390,4 +396,38 @@ code {
   [data-slider-dot]::before {
     transition: none;
   }
+}
+
+.code {
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.code-file {
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.code pre {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  font:
+    13px/1.6 ui-monospace,
+    'SF Mono',
+    Menlo,
+    Consolas,
+    monospace;
+  tab-size: 2;
+}
+
+.code code {
+  padding: 0;
+  font: inherit;
+  background: none;
 }

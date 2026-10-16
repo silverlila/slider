@@ -1,9 +1,19 @@
+/**
+ * Timed advancing for a slider, with the pauses WCAG 2.2.2 users expect.
+ *
+ * Browsers leave focus on a button after a mouse click, so only focus that matches
+ * `:focus-visible` (keyboard focus) pauses; otherwise clicking Next or the toggle would keep
+ * autoplay paused until the user clicked somewhere else.
+ *
+ * `play()` clears the current hover and focus pauses, so a Play button starts it even though
+ * pressing it put the pointer and focus inside the slider.
+ */
 import type { Slider, SliderState } from './types'
 
 export interface AutoplayOptions {
   /** Milliseconds between moves; must be > 0. Default `4000`. */
   delay?: number
-  /** Element whose hover and focus pause autoplay. Default `slider.viewport`. */
+  /** Element whose hover and keyboard focus pause autoplay. Default `slider.viewport`. */
   root?: HTMLElement
   /** Pause while the pointer is over `root`. Default `true`. */
   pauseOnHover?: boolean
@@ -25,8 +35,8 @@ const INTERACTIONS = ['pointerdown', 'wheel', 'keydown'] as const
 
 /**
  * Advances `slider` every `delay` ms, back to the first snap at the end. Pauses while hovered,
- * while focus is inside `root`, while a pointer is pressed on the viewport and while the tab is
- * hidden. Starts stopped under `prefers-reduced-motion: reduce`.
+ * while keyboard focus is inside `root`, while a pointer is pressed on the viewport and while the
+ * tab is hidden. Starts stopped under `prefers-reduced-motion: reduce`.
  */
 export function autoplay(slider: Slider, options: AutoplayOptions = {}): Autoplay {
   const delay = options.delay ?? DEFAULT_DELAY
@@ -40,7 +50,6 @@ export function autoplay(slider: Slider, options: AutoplayOptions = {}): Autopla
   let playing = !matchMedia('(prefers-reduced-motion: reduce)').matches
   let hovered = false
   let focused = false
-  // A programmatic move while a drag holds snap off would leave snapping suspended.
   let pressed = false
   let timer: ReturnType<typeof setTimeout> | null = null
   let index = slider.getState().index
@@ -50,7 +59,6 @@ export function autoplay(slider: Slider, options: AutoplayOptions = {}): Autopla
     return hovered || focused || pressed || document.visibilityState === 'hidden'
   }
 
-  /** Clears the countdown and, while playing and not paused, starts a fresh one. */
   function schedule(): void {
     if (timer !== null) clearTimeout(timer)
     timer = playing && !isPaused() ? setTimeout(advance, delay) : null
@@ -86,8 +94,8 @@ export function autoplay(slider: Slider, options: AutoplayOptions = {}): Autopla
     schedule()
   }
 
-  function onFocusIn(): void {
-    focused = true
+  function onFocusIn(event: FocusEvent): void {
+    focused = event.target instanceof Element && event.target.matches(':focus-visible')
     schedule()
   }
 
@@ -133,7 +141,10 @@ export function autoplay(slider: Slider, options: AutoplayOptions = {}): Autopla
   return {
     play() {
       assertAlive()
+      hovered = false
+      focused = false
       setPlaying(true)
+      schedule()
     },
     stop() {
       assertAlive()

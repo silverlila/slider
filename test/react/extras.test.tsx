@@ -1,14 +1,19 @@
+/**
+ * Elements mount at the top left of the page, and Chromium fires a real `pointerenter` on an
+ * element that appears under a cursor an earlier click left there, which pauses autoplay; so each
+ * test first parks the cursor in the opposite corner.
+ */
 /// <reference types="@vitest/browser-playwright" />
 import '../../src/styles.css'
-import { Component, type ReactNode } from 'react'
-import { beforeEach, describe, expect, onTestFinished, test, vi } from 'vitest'
+import { beforeEach, describe, expect, onTestFinished, test } from 'vitest'
 import { cdp } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import { Slider, type SliderProps } from '../../src/react'
+import { wait } from '../helpers/dom'
+import { ErrorBoundary, silenceCaughtErrorLog } from '../helpers/react'
 
 type SlidesProps = Omit<SliderProps, 'children'> & { count?: number }
 
-// Three 300px slides in a 300px root: snaps at 0, 300, 600.
 function Slides({ count = 3, ...props }: SlidesProps) {
   return (
     <Slider style={{ width: 300 }} animation={{ type: 'instant' }} {...props}>
@@ -25,7 +30,6 @@ function Slides({ count = 3, ...props }: SlidesProps) {
   )
 }
 
-// Four slides with a thumbnail strip and no dots, so "Go to slide n" names one thumbnail.
 function Gallery({ thumbsPerView = 4 }: { thumbsPerView?: number | 'auto' }) {
   return (
     <Slider style={{ width: 300 }} animation={{ type: 'instant' }}>
@@ -58,45 +62,18 @@ function thumbElements(): HTMLElement[] {
   return Array.from(document.querySelectorAll<HTMLElement>('[data-slider-thumb]'))
 }
 
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-/** Every index reported over 150ms: several 40ms delays, so a running autoplay moves. */
 async function movesOverQuietPeriod(moves: number[]): Promise<number[]> {
   const before = moves.length
   await wait(150)
   return moves.slice(before)
 }
 
-// A click leaves the pointer over the slider and focus inside it, each of which only pauses.
 function releaseSlider(): void {
   if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
   element('[data-slider]').dispatchEvent(new PointerEvent('pointerleave'))
 }
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
-  state = { error: null }
-
-  static getDerivedStateFromError(error: Error) {
-    return { error }
-  }
-
-  render() {
-    const { error } = this.state
-    return error ? <p role="alert">{String(error)}</p> : this.props.children
-  }
-}
-
-// React logs every error an error boundary catches.
-function silenceCaughtErrorLog() {
-  const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-  onTestFinished(() => log.mockRestore())
-}
-
 describe('autoplay prop', () => {
-  // Each slider renders at the top left, where a cursor left by an earlier click would hover it
-  // and pause it; park the cursor at the opposite corner.
   beforeEach(async () => {
     await cdp().send('Input.dispatchMouseEvent', {
       type: 'mouseMoved',
@@ -129,7 +106,6 @@ describe('autoplay prop', () => {
     expect(await movesOverQuietPeriod(moves)).toEqual([])
 
     await play.click()
-    releaseSlider()
 
     await expect
       .element(screen.getByRole('button', { name: 'Stop automatic slide show' }))

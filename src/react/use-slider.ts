@@ -65,7 +65,6 @@ export function useSlider(options: UseSliderOptions = {}): UseSliderResult {
   const [rootElement, setRootElement] = useState<HTMLElement | null>(null)
   const [slider, setSlider] = useState<Slider | null>(null)
   const stableAnimation = useShallowStable(animation)
-  // Callbacks and the start index are read when needed, so their identity never re-runs an effect.
   const latest = useRef(options)
   const previousIndex = useRef<number | null>(null)
   const live = useRef<Slider | null>(null)
@@ -85,7 +84,7 @@ export function useSlider(options: UseSliderOptions = {}): UseSliderResult {
       rewind,
       draggable,
       animation: stableAnimation,
-      startIndex: previousIndex.current ?? start.index ?? start.defaultIndex ?? 0,
+      startIndex: previousIndex.current ?? start.index ?? start.defaultIndex,
     })
     let reported = engine.getState().index
     engine.subscribe((state) => {
@@ -96,7 +95,6 @@ export function useSlider(options: UseSliderOptions = {}): UseSliderResult {
     live.current = engine
     setSlider(engine)
     return () => {
-      // A destroyed engine cannot be read, so the slide to keep is taken first.
       previousIndex.current = engine.getState().index
       live.current = null
       engine.destroy()
@@ -112,7 +110,6 @@ export function useSlider(options: UseSliderOptions = {}): UseSliderResult {
     return slideProgress(slider)
   }, [slider, live, tracksProgress])
 
-  // Reads the live engine: `slider` may name one this commit has just destroyed and replaced.
   useEffect(() => {
     const engine = live.current
     if (engine === null || index === undefined) return
@@ -141,10 +138,6 @@ export function useSlider(options: UseSliderOptions = {}): UseSliderResult {
   )
 }
 
-/**
- * Runs `autoplay` on the live engine while `option` is on, rooted at `rootElement` (hover and focus
- * there pause it), and reports its playing state.
- */
 function useAutoplay(
   slider: Slider | null,
   live: RefObject<Slider | null>,
@@ -158,8 +151,6 @@ function useAutoplay(
   const stopOnInteraction = settings?.stopOnInteraction
   const [controls, setControls] = useState<AutoplayControls | null>(null)
 
-  // A layout effect, like the engine's: on unmount React runs layout cleanups before passive ones,
-  // so a passive autoplay's timer could fire at an engine already destroyed.
   useLayoutEffect(() => {
     if (!isLive(slider, live) || !enabled) return
     const player = autoplay(slider, {
@@ -181,11 +172,6 @@ function useAutoplay(
   return controls
 }
 
-/**
- * Whether `slider` is the engine in use. Rendered state lags the engine by one render: right after
- * creation it is still `null`, right after re-creation it names the destroyed engine. Effects
- * that wait for it to catch up run exactly once per engine.
- */
 function isLive(slider: Slider | null, live: RefObject<Slider | null>): slider is Slider {
   return slider !== null && slider === live.current
 }
@@ -201,7 +187,6 @@ function selectDiscrete(state: SliderState): DiscreteState {
   }
 }
 
-/** The last `value` that differed field by field: an inline object literal keeps one identity. */
 function useShallowStable(value: ScrollAnimation | undefined): ScrollAnimation | undefined {
   const stable = useRef(value)
   if (!shallowEqual(stable.current, value)) stable.current = value

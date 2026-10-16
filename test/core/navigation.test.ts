@@ -1,3 +1,11 @@
+/**
+ * use-scroller's `observeScroll` reports the viewport at rest only 120ms (its default
+ * `idleDelay`) after the last scroll event, and a programmatic jump fires a scroll event too.
+ * The engine re-anchors after a resize only at rest, so resize tests wait that long first.
+ *
+ * A use-scroller `animateScroll` spring, such as a drag release, holds snapping off with its own
+ * inline `scroll-snap-type` while it runs.
+ */
 import { animateScroll } from 'use-scroller/core'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { createSlider, type SliderOptions, type SliderState } from '../../src/core'
@@ -12,18 +20,14 @@ function create(viewport: HTMLElement, options: SliderOptions = {}) {
   return slider
 }
 
-// The engine only re-anchors after a resize at rest; observeScroll reports rest 120ms after the
-// last scroll event (its default idleDelay), and a programmatic jump fires a scroll event too.
 function scrollIdle(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 200))
 }
 
-// Five 300px slides in a 300px viewport: snaps at 0, 300, 600, 900, 1200.
 function mountFiveSlides(options: { dir?: 'ltr' | 'rtl' } = {}) {
   return mountViewport({ width: 300, slides: 5, perView: 1, gap: 0, ...options })
 }
 
-// Ten 100px slides, 10px apart, in a 320px viewport: a slide every 110px, scroll range 0..770.
 function mountTenSlidesThreePerView() {
   return mountViewport({ width: 320, slides: 10, perView: 3, gap: 10 })
 }
@@ -88,7 +92,6 @@ describe('createSlider', () => {
   test('restores snapping after navigating over a running scroll animation', async () => {
     const viewport = mountFiveSlides()
     const slider = create(viewport, { animation: { type: 'tween', duration: 100 } })
-    // A drag's release spring: it holds snapping off with its own inline value while it runs.
     animateScroll(viewport, { x: 600 }, { animation: { type: 'spring' }, respectReducedMotion: false })
 
     slider.next()
@@ -156,7 +159,6 @@ describe('createSlider', () => {
   })
 
   test("centres slides with align: 'center'", () => {
-    // Five 200px slides in a 300px viewport: slide 1 spans 200..400, its centre 300 minus half the port.
     const viewport = mountViewport({ width: 300, slides: [200, 200, 200, 200, 200] })
     const slider = create(viewport, { align: 'center' })
 

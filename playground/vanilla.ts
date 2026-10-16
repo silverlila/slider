@@ -29,10 +29,6 @@ function slide(index: number): HTMLElement {
   return element
 }
 
-/**
- * Builds a looping, autoplaying slider inside `container` with the framework-free core only.
- * Returns a cleanup that tears everything down and empties `container`.
- */
 export function mountVanillaSlider(container: HTMLElement): () => void {
   const root = document.createElement('div')
   root.className = 'slider'
@@ -68,7 +64,7 @@ export function mountVanillaSlider(container: HTMLElement): () => void {
 
   const slider = createSlider(viewport, { loop: true, align: 'center' })
   const removeClones = renderClones(slider)
-  const player = autoplay(slider, { delay: 3000, root })
+  const player = autoplay(slider, { delay: 1000, root })
 
   prev.addEventListener('click', () => slider.prev())
   next.addEventListener('click', () => slider.next())

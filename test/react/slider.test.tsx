@@ -1,6 +1,11 @@
+/**
+ * use-scroller's `observeScroll` reports the viewport at rest only 120ms (its default
+ * `idleDelay`) after the last scroll event, and a programmatic jump fires a scroll event too.
+ * Loop recentring lags by that much.
+ */
 import '../../src/styles.css'
-import { Component, StrictMode, useState, type ReactNode } from 'react'
-import { describe, expect, onTestFinished, test, vi } from 'vitest'
+import { StrictMode, useState } from 'react'
+import { describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import type { Slider as Engine } from '../../src/core'
 import {
@@ -10,10 +15,11 @@ import {
   useSliderState,
   type SliderProps,
 } from '../../src/react'
+import { wait } from '../helpers/dom'
+import { ErrorBoundary, silenceCaughtErrorLog } from '../helpers/react'
 
 type SlidesProps = Omit<SliderProps, 'children'> & { count?: number }
 
-// Three 300px slides in a 300px root: snaps at 0, 300, 600.
 function Slides({ count = 3, ...props }: SlidesProps) {
   return (
     <Slider style={{ width: 300 }} animation={{ type: 'instant' }} {...props}>
@@ -39,29 +45,6 @@ function viewportElement(): HTMLElement {
 
 function slideElements(): HTMLElement[] {
   return Array.from(document.querySelectorAll<HTMLElement>('[data-slider-slide]'))
-}
-
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
-  state = { error: null }
-
-  static getDerivedStateFromError(error: Error) {
-    return { error }
-  }
-
-  render() {
-    const { error } = this.state
-    return error ? <p role="alert">{String(error)}</p> : this.props.children
-  }
-}
-
-// React logs every error an error boundary catches.
-function silenceCaughtErrorLog() {
-  const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-  onTestFinished(() => log.mockRestore())
 }
 
 describe('Slider', () => {
@@ -152,7 +135,6 @@ describe('Slider', () => {
 
   test('onIndexChange is not called on mount and once per navigation', async () => {
     const onIndexChange = vi.fn()
-    // An animated navigation emits a state change every frame; only the index change is reported.
     const screen = await render(
       <Slides onIndexChange={onIndexChange} animation={{ type: 'tween', duration: 150 }} />
     )
@@ -184,7 +166,6 @@ describe('Slider', () => {
 
     await prev.click()
 
-    // Recentering waits for observeScroll's 120ms idle delay after the last scroll event.
     await expect.poll(() => viewportElement().scrollLeft, { timeout: 1000 }).toBe(1500)
   })
 

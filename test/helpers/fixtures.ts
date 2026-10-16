@@ -5,7 +5,6 @@ import { mount } from './dom'
 interface ViewportFixture {
   width: number
   height?: number
-  /** A slide count (sized by `perView`), or one explicit size per slide along the axis. */
   slides: number | number[]
   perView?: number
   gap?: number
@@ -36,7 +35,6 @@ export function mountViewport({
   return mount(viewport)
 }
 
-/** A slide sized by the viewport's CSS, or `size` px along the axis when given. */
 export function createSlide(size?: number, axis: Axis = 'x'): HTMLDivElement {
   const slide = document.createElement('div')
   if (size !== undefined) slide.style[axis === 'x' ? 'width' : 'height'] = `${size}px`

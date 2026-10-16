@@ -148,8 +148,8 @@ function Hero({ items }: { items: string[] }) {
 ```
 
 The result holds the discrete state (`index`, `snapCount`, `slideCount`, `canPrev`, `canNext`,
-`loopCopies`), `viewportRef`, `rootRef` (optional: autoplay pauses while the pointer or focus is
-inside that element), `slider` (the engine, `null` until mounted), `autoplay`
+`loopCopies`), `viewportRef`, `rootRef` (optional: autoplay pauses while the pointer or keyboard
+focus is inside that element), `slider` (the engine, `null` until mounted), `autoplay`
 (`{ isPlaying, play, stop }`, or `null` when autoplay is off) and `next`, `prev`,
 `scrollTo(index)`. Each navigation method takes an optional `{ animation }` that overrides the
 option for that call.
@@ -236,8 +236,10 @@ first.
 | `stopOnInteraction` | `true` | Stop for good on `pointerdown`, `wheel` or `keydown` on the viewport. |
 
 Autoplay advances one snap at a time and goes back to the first snap after the last. It pauses
-while the pointer is over the `<Slider>` element, while focus is anywhere inside it, while a
-pointer is pressed on the viewport, and while the tab is hidden. It starts stopped under
+while the pointer is over the `<Slider>` element, while keyboard focus is anywhere inside it (the
+focus a mouse click leaves on a button does not count), while a pointer is pressed on the
+viewport, and while the tab is hidden. Pressing Play overrides the hover and focus pauses, so it
+starts moving at once. It starts stopped under
 `prefers-reduced-motion: reduce`; the user can still start it with the toggle. Navigation
 animations also jump instantly under reduced motion.
 
@@ -373,7 +375,7 @@ Every function that sets something up returns a cleanup, or an object with `dest
 | --- | --- | --- |
 | `createSlider(viewport, options?)` | `Slider` | The engine. Every element child of `viewport` is a slide. |
 | `renderClones(slider)` | cleanup | Renders `loopCopies` copies on each side and re-renders when the count or the slides change. Cleanup removes every clone. |
-| `autoplay(slider, { delay?, root?, pauseOnHover?, stopOnInteraction? })` | `Autoplay` | `root` is the element whose hover and focus pause it (default the viewport). Returns `{ play(), stop(), isPlaying(), subscribe(listener), destroy() }`. |
+| `autoplay(slider, { delay?, root?, pauseOnHover?, stopOnInteraction? })` | `Autoplay` | `root` is the element whose hover and keyboard focus pause it (default the viewport). Returns `{ play(), stop(), isPlaying(), subscribe(listener), destroy() }`. |
 | `slideProgress(slider)` | cleanup | Writes `--slide-progress` and `--slide-distance`. Cleanup removes them. |
 | `syncSliders(main, thumbs)` | cleanup | Thumbnail sync, as above. Cleanup removes `aria-current` and `data-selected`. |
 

@@ -1,3 +1,13 @@
+/**
+ * The slider engine: snap positions from the slides, navigation between them, and the infinite
+ * loop, all on top of the browser's own scroll-snap.
+ *
+ * use-scroller sets an inline `scroll-snap-type: none` while one of its animations runs, a drag's
+ * release spring included, and `cancelScroll` restores the previous inline value synchronously.
+ * So the engine cancels before it saves the viewport's own value to hold snapping off. Writing the
+ * scroll position while the browser is still scrolling stops native momentum, which is why the
+ * loop only recentres at rest on a snap.
+ */
 import {
   animateScroll,
   cancelScroll,
@@ -30,14 +40,12 @@ import type { NavigateOptions, Slider, SliderOptions, SliderState } from './type
 
 type ResolvedOptions = Slider['options']
 
-/** A navigation in flight: its target snap and, in a loop, the target's virtual index. */
 interface Pending {
   index: number
   virtual: number
 }
 
 const DEFAULT_ANIMATION: ScrollAnimation = { type: 'tween' }
-// How far from a snap the position may be and still count as resting on it.
 const SNAP_TOLERANCE = 1
 
 const STATE_KEYS = [
@@ -59,13 +67,11 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
   let layout = readLayout(viewport, axis)
   let snaps: number[] = []
   let loopCopies = 0
-  // The loop geometry while the loop is active (clones rendered); null otherwise.
   let loop: Loop | null = null
   const tracked = new Set<HTMLElement>()
   const listeners = new Set<(state: SliderState) => void>()
   let pending: Pending | null = null
   let current: ScrollHandle | null = null
-  // The viewport's own inline scroll-snap-type while the engine holds snapping off; null otherwise.
   let heldSnapType: string | null = null
   let pointerDown = false
   let scrolling = false
@@ -109,7 +115,6 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
     layout.slides.forEach((slide, i) => {
       slide.style.scrollSnapAlign = anchorSet.has(i) ? align : 'none'
     })
-    // Clones snap like the slide they copy, so native snapping continues through them.
     for (const clone of layout.clones) {
       const source = Number(clone.getAttribute('data-slider-clone'))
       clone.style.scrollSnapAlign = loop && anchorSet.has(source) ? align : 'none'
@@ -146,10 +151,6 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
     recentre()
   }
 
-  /**
-   * At rest on a snap inside a clone region, jump by whole periods to the same snap in the real
-   * set. Moving the position at any other time would stop native momentum or fight a navigation.
-   */
   function recentre(): void {
     if (loop === null || scrolling || pointerDown || pending !== null) return
     const position = livePosition()
@@ -217,8 +218,6 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
 
   function holdSnap(): void {
     if (heldSnapType !== null) return
-    // A running animation (a drag's release spring) holds snap off with its own inline value.
-    // Cancelling it restores that value synchronously, so the one saved here is the viewport's own.
     cancelScroll(viewport)
     heldSnapType = viewport.style.scrollSnapType
     viewport.style.scrollSnapType = 'none'
@@ -231,12 +230,10 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
   }
 
   function navigate(index: number, navigateOptions: NavigateOptions = {}): void {
-    // The engine owns snap suspension so a newer navigation never has snap restored under it.
     holdSnap()
     animateTo({ index, virtual: index }, snaps[index], navigateOptions)
   }
 
-  /** Navigate a loop from virtual snap `from` to virtual snap `target`, through clones. */
   function navigateLoop(
     active: Loop,
     from: number,
@@ -244,7 +241,6 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
     navigateOptions: NavigateOptions = {}
   ): void {
     holdSnap()
-    // Shift by whole periods so `from` lies in the real set and the target stays in the buffer.
     const n = active.snaps.length
     const copy = Math.floor(from / n)
     if (copy !== 0) jumpTo(livePosition() - active.direction * copy * active.period)
@@ -348,7 +344,6 @@ export function createSlider(viewport: HTMLElement, options: SliderOptions = {})
   }
 }
 
-/** The loop is active once a renderer has put `copies` full sets of clones on each side. */
 function isLoopActive(layout: Layout, copies: number): boolean {
   const expected = copies * layout.slides.length
   return expected > 0 && layout.clonesBefore === expected && layout.clonesAfter === expected

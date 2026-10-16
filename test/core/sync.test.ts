@@ -10,8 +10,6 @@ function create(viewport: HTMLElement): Slider {
   return slider
 }
 
-// Main: five 300px slides in a 300px viewport. Thumbs: five 100px slides in a 300px viewport,
-// scroll range 0..200, so thumb snaps are 0, 100 and 200.
 function mountGallery() {
   const main = create(mountViewport({ width: 300, slides: 5, perView: 1, gap: 0 }))
   const thumbs = create(mountViewport({ width: 300, slides: [100, 100, 100, 100, 100], gap: 0 }))

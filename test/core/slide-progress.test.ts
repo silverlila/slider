@@ -29,7 +29,6 @@ function distanceOf(element: Element | undefined): string | undefined {
   return element.style.getPropertyValue('--slide-distance')
 }
 
-// Five 300px slides in a 300px viewport: a slide every 300px.
 function mountFiveSlides(options: { dir?: 'ltr' | 'rtl' } = {}) {
   return mountViewport({ width: 300, slides: 5, perView: 1, gap: 0, ...options })
 }
@@ -47,7 +46,6 @@ describe('slideProgress', () => {
   test('follows native scrolling between snaps', async () => {
     const viewport = mountFiveSlides()
     track(viewport)
-    // Hold the position halfway between two snaps.
     viewport.style.scrollSnapType = 'none'
 
     viewport.scrollTo({ left: 150, behavior: 'instant' })
@@ -59,7 +57,6 @@ describe('slideProgress', () => {
   })
 
   test('measures from the centre with align center', async () => {
-    // Five 200px slides in a 300px viewport: slide 1 is centred at scroll 150.
     const viewport = mountViewport({ width: 300, slides: [200, 200, 200, 200, 200], gap: 0 })
     track(viewport, { align: 'center' })
 
@@ -77,7 +74,6 @@ describe('slideProgress', () => {
   })
 
   test('gives clones values too', async () => {
-    // Three 300px slides, one copy each side: the real set starts at 900.
     const viewport = mountViewport({ width: 300, slides: 3, perView: 1, gap: 0 })
     const slider = createSlider(viewport, { ...INSTANT, loop: true })
     const stopCloning = renderClones(slider)
@@ -95,7 +91,6 @@ describe('slideProgress', () => {
   })
 
   test('follows the loop recentring jump', async () => {
-    // Three 300px slides, one copy each side: the real set spans 900–1800.
     const viewport = mountViewport({ width: 300, slides: 3, perView: 1, gap: 0 })
     const slider = createSlider(viewport, { ...INSTANT, loop: true })
     const stopCloning = renderClones(slider)
@@ -109,7 +104,6 @@ describe('slideProgress', () => {
     slider.scrollTo(2)
     await expect.poll(() => viewport.scrollLeft).toBe(1500)
 
-    // Lands on the clone after the last slide at 1800, then jumps one period back to 900.
     slider.next()
     await expect.poll(() => viewport.scrollLeft).toBe(900)
 

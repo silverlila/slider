@@ -1,3 +1,4 @@
+import { childrenOf } from './geometry'
 import type { Slider, SliderState } from './types'
 
 /**
@@ -13,9 +14,7 @@ export function renderClones(slider: Slider): () => void {
     if (rendered?.loopCopies === loopCopies && rendered.slideCount === slideCount) return
     rendered = { loopCopies, slideCount }
     removeClones(viewport)
-    const slides = Array.from(viewport.children).filter(
-      (child): child is HTMLElement => child instanceof HTMLElement
-    )
+    const slides = childrenOf(viewport)
     if (loopCopies === 0 || slides.length === 0) return
     slides[0].before(copiesOf(slides, loopCopies))
     slides[slides.length - 1].after(copiesOf(slides, loopCopies))
@@ -41,7 +40,6 @@ function copiesOf(slides: HTMLElement[], copies: number): DocumentFragment {
   return fragment
 }
 
-/** A visual copy of real slide `index`: hidden from assistive tech, inert, with no ids. */
 function cloneSlide(slide: HTMLElement, index: number): Node {
   const clone = slide.cloneNode(true)
   if (!(clone instanceof HTMLElement)) throw new Error('Slider slides must be HTML elements')

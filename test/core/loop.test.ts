@@ -1,9 +1,14 @@
+/**
+ * use-scroller's `observeScroll` reports the viewport at rest only 120ms (its default
+ * `idleDelay`) after the last scroll event, and a programmatic jump fires a scroll event too.
+ * Anything gated on rest, such as loop recentring, lags by that much.
+ */
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { createSlider, renderClones, type SliderOptions } from '../../src/core'
+import { wait } from '../helpers/dom'
 import { mountViewport } from '../helpers/fixtures'
 
 const LOOP: SliderOptions = { loop: true, animation: { type: 'instant' } }
-// Recentering waits for observeScroll's 120ms idle delay after the last scroll event.
 const SETTLED = { timeout: 1000 }
 
 function createLoop(viewport: HTMLElement, options: SliderOptions = {}) {
@@ -16,7 +21,6 @@ function createLoop(viewport: HTMLElement, options: SliderOptions = {}) {
   return { slider, stopCloning }
 }
 
-// Three 300px slides in a 300px viewport: period 900, one copy each side, real set at 900..1500.
 function mountThreeSlides(options: { dir?: 'ltr' | 'rtl' } = {}) {
   return mountViewport({ width: 300, slides: 3, perView: 1, gap: 0, ...options })
 }
@@ -30,10 +34,6 @@ async function mountStartedLoop(options: SliderOptions = {}) {
 
 function clones(viewport: HTMLElement): HTMLElement[] {
   return Array.from(viewport.querySelectorAll<HTMLElement>(':scope > [data-slider-clone]'))
-}
-
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function pointer(type: 'pointerdown' | 'pointerup', target: EventTarget): void {
