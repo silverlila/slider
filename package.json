@@ -1,6 +1,6 @@
 {
   "name": "@silverlila/slider",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A slider and carousel library built on native browser scrolling.",
   "license": "MIT",
   "author": "silvi lila",
