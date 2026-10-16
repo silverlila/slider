@@ -4,6 +4,14 @@
   "description": "A slider and carousel library built on native browser scrolling.",
   "license": "MIT",
   "author": "silvi lila",
+  "homepage": "https://silverlila.github.io/slider/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/silverlila/slider.git"
+  },
+  "bugs": {
+    "url": "https://github.com/silverlila/slider/issues"
+  },
   "type": "module",
   "sideEffects": [
     "*.css"
@@ -41,7 +49,10 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "playground:build": "vite build --outDir dist-playground"
+    "playground:build": "vite build --outDir dist-playground",
+    "prepublishOnly": "pnpm build",
+    "changeset": "changeset",
+    "release": "changeset publish"
   },
   "peerDependencies": {
     "react": "^19"
@@ -55,6 +66,7 @@
     "use-scroller": "^2.0.0"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "@eslint/js": "^9.30.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
