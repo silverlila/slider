@@ -24,3 +24,6 @@ dist-playground
 *.njsproj
 *.sln
 *.sw?
+
+# Local planning docs (specs, field guide)
+context/
