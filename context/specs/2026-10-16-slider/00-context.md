@@ -248,3 +248,5 @@ pnpm playground:build
   Safari and Android is not possible in this environment; the test suite runs headless Chromium only.
 
 ## Landed
+
+01. ✔ 37 files. Ran the unit Verify: typecheck, lint, 20 real-Chromium navigation tests (incl. a regression test for snap being left off after navigating over a running drag-release animation), tsup build emitting dist/index.js, core.js, both .d.ts and styles.css; old deps gone; core imports no React.
