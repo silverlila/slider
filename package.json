@@ -40,7 +40,8 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "playground:build": "vite build --outDir dist-playground"
   },
   "peerDependencies": {
     "react": "^19"

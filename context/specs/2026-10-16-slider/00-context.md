@@ -254,3 +254,4 @@ pnpm playground:build
 03. ✔ 9 files. typecheck + lint clean; 55 real-Chromium tests passed incl. 12 autoplay (each pause condition mutation-checked), 7 slide-progress (incl. regression: values follow a loop recentre), 3 sync.
 04. ✔ 6 files. typecheck + lint clean; 73 real-Chromium tests passed incl. 18 React (a11y semantics, controlled/uncontrolled, React-rendered inert loop clones, headless useSlider, engine re-creation keeps the slide); mutation-checked key hook paths.
 05. ✔ 5 files. typecheck + lint clean; 83 real-Chromium tests passed incl. 10 React extras (autoplay prop + toggle, root hover pause, unmount teardown, slideProgress prop, Thumbs sync both ways); mutation-checked.
+06. ✔ 8 files. typecheck + lint clean; 83 tests passed; playground:build bundled 45 modules into dist-playground/index.html; lib build OK; reviewer drove the built playground at 375/800/1200px with no console errors and no page overflow. Checkpoint (feel/visual) awaits the user.

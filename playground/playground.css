@@ -1,0 +1,393 @@
+:root {
+  color-scheme: light dark;
+  --color-page: oklch(0.985 0.004 260);
+  --color-surface: oklch(1 0 0);
+  --color-surface-hover: oklch(0.96 0.006 260);
+  --color-text: oklch(0.24 0.015 260);
+  --color-text-muted: oklch(0.5 0.015 260);
+  --color-text-disabled: oklch(0.72 0.01 260);
+  --color-border: oklch(0.24 0.02 260 / 0.12);
+  --color-track: oklch(0.24 0.02 260 / 0.1);
+  --color-code: oklch(0.24 0.02 260 / 0.06);
+  /* Card colours: lightness and chroma here, the hue per slide in --hue. */
+  --card-background-lc: 0.88 0.07;
+  --card-text-lc: 0.36 0.1;
+  --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-page: oklch(0.17 0.01 260);
+    --color-surface: oklch(0.22 0.012 260);
+    --color-surface-hover: oklch(0.26 0.014 260);
+    --color-text: oklch(0.95 0.005 260);
+    --color-text-muted: oklch(0.72 0.01 260);
+    --color-text-disabled: oklch(0.48 0.01 260);
+    --color-border: oklch(1 0 0 / 0.12);
+    --color-track: oklch(1 0 0 / 0.12);
+    --color-code: oklch(1 0 0 / 0.08);
+    --card-background-lc: 0.4 0.09;
+    --card-text-lc: 0.93 0.05;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 40px 16px 80px;
+  font:
+    16px/1.5 system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  color: var(--color-text);
+  background: var(--color-page);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+code {
+  padding: 1px 5px;
+  font:
+    0.875em/1 ui-monospace,
+    'SF Mono',
+    Menlo,
+    Consolas,
+    monospace;
+  border-radius: 4px;
+  background: var(--color-code);
+}
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 56px;
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: grid;
+  gap: 8px;
+}
+
+.page-header h1 {
+  font-size: 28px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.page-header p,
+.demo-header p {
+  max-width: 65ch;
+  color: var(--color-text-muted);
+  text-wrap: pretty;
+}
+
+.demo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.demo-header {
+  display: grid;
+  gap: 4px;
+}
+
+.demo-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+/* Slider layout */
+
+.slider {
+  display: grid;
+  /* minmax(0, …): a column sized to its content would let the slides stretch the page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.viewport {
+  border-radius: var(--radius);
+}
+
+.viewport:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.viewport--responsive {
+  --slider-per-view: 1;
+}
+
+@media (min-width: 640px) {
+  .viewport--responsive {
+    --slider-per-view: 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .viewport--responsive {
+    --slider-per-view: 4;
+  }
+}
+
+.viewport--vertical {
+  height: 320px;
+}
+
+/* Slides */
+
+.card {
+  display: grid;
+  place-items: center;
+  height: 240px;
+  border-radius: var(--radius);
+  color: oklch(var(--card-text-lc) var(--hue));
+  background: oklch(var(--card-background-lc) var(--hue));
+  user-select: none;
+}
+
+.card-number {
+  font-size: 64px;
+  font-weight: 650;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.card--small {
+  height: 160px;
+}
+
+.card--small .card-number {
+  font-size: 40px;
+}
+
+/* Sized by the vertical viewport's flex basis instead. */
+.card--fill {
+  height: auto;
+}
+
+/* Scales around the centre (the default transform-origin), so snapping is unaffected. */
+.card--effect {
+  scale: calc(1 - min(var(--slide-distance, 0), 1) * 0.15);
+  opacity: calc(1 - min(var(--slide-distance, 0), 1) * 0.5);
+}
+
+/* Controls */
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.controls--spread {
+  justify-content: space-between;
+}
+
+.button,
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 16px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color 150ms ease-out,
+    transform 150ms ease-out;
+}
+
+.icon-button {
+  padding: 0;
+}
+
+.button:active:not(:disabled),
+.icon-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.button:disabled,
+.icon-button:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
+}
+
+.button:focus-visible,
+.icon-button:focus-visible,
+[data-slider-dot]:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:hover:not(:disabled),
+  .icon-button:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+  }
+}
+
+/* The chevron points forward; it flips for Previous, for right-to-left and turns for vertical. */
+.chevron--back,
+[dir='rtl'] .chevron {
+  scale: -1 1;
+}
+
+[dir='rtl'] .chevron--back {
+  scale: 1 1;
+}
+
+.slider--vertical .chevron {
+  rotate: 90deg;
+}
+
+.counter {
+  margin-inline-start: auto;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dots: a 44px hit area around an 8px mark. */
+
+.dots {
+  display: flex;
+  justify-content: center;
+}
+
+[data-slider-dot] {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+[data-slider-dot]::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-track);
+  transition: background-color 150ms ease-out;
+}
+
+[data-slider-dot][data-selected]::before {
+  background: var(--color-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-slider-dot]:hover:not([data-selected])::before {
+    background: var(--color-text-muted);
+  }
+}
+
+/* Thumbnails */
+
+.thumb {
+  height: 52px;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: oklch(var(--card-text-lc) var(--hue));
+  border: 0;
+  border-radius: 8px;
+  background: oklch(var(--card-background-lc) var(--hue));
+  opacity: 0.5;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 150ms ease-out;
+}
+
+/* The strip clips anything drawn outside a thumbnail, so its rings sit inside. */
+.thumb[data-selected] {
+  opacity: 1;
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+
+.thumb:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .thumb:hover {
+    opacity: 1;
+  }
+}
+
+/* Controlled demo */
+
+.progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-track);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--color-text);
+  transform-origin: left;
+}
+
+.range-field {
+  display: flex;
+  flex: 1 1 200px;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-field .counter {
+  flex: none;
+  margin-inline-start: 0;
+}
+
+.range-field input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  accent-color: var(--color-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .icon-button,
+  .thumb,
+  [data-slider-dot]::before {
+    transition: none;
+  }
+}
