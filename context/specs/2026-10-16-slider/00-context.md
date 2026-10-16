@@ -251,3 +251,4 @@ pnpm playground:build
 
 01. ✔ 37 files. Ran the unit Verify: typecheck, lint, 20 real-Chromium navigation tests (incl. a regression test for snap being left off after navigating over a running drag-release animation), tsup build emitting dist/index.js, core.js, both .d.ts and styles.css; old deps gone; core imports no React.
 02. ✔ 6 files. typecheck + lint clean; 34 real-Chromium tests (20 navigation + 14 loop: copies, DOM clones with aria-hidden/inert/ids stripped, wrap forward/back, recentre at rest, RTL) passed.
+03. ✔ 9 files. typecheck + lint clean; 55 real-Chromium tests passed incl. 12 autoplay (each pause condition mutation-checked), 7 slide-progress (incl. regression: values follow a loop recentre), 3 sync.
