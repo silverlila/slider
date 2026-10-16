@@ -1,1 +1,5 @@
 export * from '../core'
+export { useSliderContext } from './context'
+export { Slider, type SliderProps } from './slider'
+export { useSlider, type UseSliderOptions, type UseSliderResult } from './use-slider'
+export { useSliderState } from './use-slider-state'
