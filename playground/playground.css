@@ -1,0 +1,433 @@
+/*
+ * Playground page styling. Grid columns that hold sliders use `minmax(0, 1fr)`: a column sized to
+ * its content would let the slides stretch the page.
+ */
+:root {
+  color-scheme: light dark;
+  --color-page: oklch(0.985 0.004 260);
+  --color-surface: oklch(1 0 0);
+  --color-surface-hover: oklch(0.96 0.006 260);
+  --color-text: oklch(0.24 0.015 260);
+  --color-text-muted: oklch(0.5 0.015 260);
+  --color-text-disabled: oklch(0.72 0.01 260);
+  --color-border: oklch(0.24 0.02 260 / 0.12);
+  --color-track: oklch(0.24 0.02 260 / 0.1);
+  --color-code: oklch(0.24 0.02 260 / 0.06);
+  --card-background-lc: 0.88 0.07;
+  --card-text-lc: 0.36 0.1;
+  --radius: 12px;
+  --sh-class: #2d5e9d;
+  --sh-identifier: var(--color-text);
+  --sh-sign: #69727d;
+  --sh-property: #0550ae;
+  --sh-entity: #1f7f7c;
+  --sh-jsxliterals: #5054c4;
+  --sh-string: #0a7a6e;
+  --sh-keyword: #c4372d;
+  --sh-comment: #6f757d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-page: oklch(0.17 0.01 260);
+    --color-surface: oklch(0.22 0.012 260);
+    --color-surface-hover: oklch(0.26 0.014 260);
+    --color-text: oklch(0.95 0.005 260);
+    --color-text-muted: oklch(0.72 0.01 260);
+    --color-text-disabled: oklch(0.48 0.01 260);
+    --color-border: oklch(1 0 0 / 0.12);
+    --color-track: oklch(1 0 0 / 0.12);
+    --color-code: oklch(1 0 0 / 0.08);
+    --card-background-lc: 0.4 0.09;
+    --card-text-lc: 0.93 0.05;
+    --sh-class: #8fb8f0;
+    --sh-sign: #8b95a1;
+    --sh-property: #79b8ff;
+    --sh-entity: #5fd1c9;
+    --sh-jsxliterals: #b4a7ff;
+    --sh-string: #7ee0c3;
+    --sh-keyword: #ff8a80;
+    --sh-comment: #8b919a;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 40px 16px 80px;
+  font:
+    16px/1.5 system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  color: var(--color-text);
+  background: var(--color-page);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+code {
+  padding: 1px 5px;
+  font:
+    0.875em/1 ui-monospace,
+    'SF Mono',
+    Menlo,
+    Consolas,
+    monospace;
+  border-radius: 4px;
+  background: var(--color-code);
+}
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 56px;
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: grid;
+  gap: 8px;
+}
+
+.page-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 28px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.page-header p,
+.demo-header p {
+  max-width: 65ch;
+  color: var(--color-text-muted);
+  text-wrap: pretty;
+}
+
+.demo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.demo-header {
+  display: grid;
+  gap: 4px;
+}
+
+.demo-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.viewport {
+  border-radius: var(--radius);
+}
+
+.viewport:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.viewport--responsive {
+  --slider-per-view: 1;
+}
+
+@media (min-width: 640px) {
+  .viewport--responsive {
+    --slider-per-view: 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .viewport--responsive {
+    --slider-per-view: 4;
+  }
+}
+
+.viewport--vertical {
+  height: 320px;
+}
+
+.card {
+  display: grid;
+  place-items: center;
+  height: 240px;
+  border-radius: var(--radius);
+  color: oklch(var(--card-text-lc) var(--hue));
+  background: oklch(var(--card-background-lc) var(--hue));
+  user-select: none;
+}
+
+.card-number {
+  font-size: 64px;
+  font-weight: 650;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.card--small {
+  height: 160px;
+}
+
+.card--small .card-number {
+  font-size: 40px;
+}
+
+.card--fill {
+  height: auto;
+}
+
+.card--effect {
+  scale: calc(1 - min(var(--slide-distance, 0), 1) * 0.15);
+  opacity: calc(1 - min(var(--slide-distance, 0), 1) * 0.5);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.controls--spread {
+  justify-content: space-between;
+}
+
+.button,
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 16px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color 150ms ease-out,
+    transform 150ms ease-out;
+}
+
+.icon-button {
+  padding: 0;
+}
+
+.button:active:not(:disabled),
+.icon-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.button:disabled,
+.icon-button:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
+}
+
+.button:focus-visible,
+.icon-button:focus-visible,
+[data-slider-dot]:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:hover:not(:disabled),
+  .icon-button:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+  }
+}
+
+.chevron--back,
+[dir='rtl'] .chevron {
+  scale: -1 1;
+}
+
+[dir='rtl'] .chevron--back {
+  scale: 1 1;
+}
+
+.slider--vertical .chevron {
+  rotate: 90deg;
+}
+
+.counter {
+  margin-inline-start: auto;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+}
+
+[data-slider-dot] {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+[data-slider-dot]::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-track);
+  transition: background-color 150ms ease-out;
+}
+
+[data-slider-dot][data-selected]::before {
+  background: var(--color-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-slider-dot]:hover:not([data-selected])::before {
+    background: var(--color-text-muted);
+  }
+}
+
+.thumb {
+  height: 52px;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: oklch(var(--card-text-lc) var(--hue));
+  border: 0;
+  border-radius: 8px;
+  background: oklch(var(--card-background-lc) var(--hue));
+  opacity: 0.5;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 150ms ease-out;
+}
+
+.thumb[data-selected] {
+  opacity: 1;
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+
+.thumb:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .thumb:hover {
+    opacity: 1;
+  }
+}
+
+.progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-track);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--color-text);
+  transform-origin: left;
+}
+
+.range-field {
+  display: flex;
+  flex: 1 1 200px;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-field .counter {
+  flex: none;
+  margin-inline-start: 0;
+}
+
+.range-field input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  accent-color: var(--color-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .icon-button,
+  .thumb,
+  [data-slider-dot]::before {
+    transition: none;
+  }
+}
+
+.code {
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.code-file {
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.code pre {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  font:
+    13px/1.6 ui-monospace,
+    'SF Mono',
+    Menlo,
+    Consolas,
+    monospace;
+  tab-size: 2;
+}
+
+.code code {
+  padding: 0;
+  font: inherit;
+  background: none;
+}
